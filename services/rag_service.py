@@ -5,7 +5,8 @@ from pathlib import Path
 from typing import Dict, List
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_community.vectorstores import Chroma
+from langchain_community.vectorstores import FAISS
+from langchain.vectorstores import FAISS as FAISS_V2
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.chains import RetrievalQA
 from langchain.llms import OpenAI
@@ -139,7 +140,7 @@ class RAGService:
         if Path(self.persist_directory).exists() and any(Path(self.persist_directory).iterdir()):
             print("ℹ️  Existing vector store found. Will add new documents to it.")
             # Load existing to get count
-            existing_store = Chroma(
+            existing_store = FAISS(
                 persist_directory=self.persist_directory,
                 embedding_function=self.embeddings
             )
@@ -193,7 +194,7 @@ class RAGService:
         if existing_chunks_count > 0:
             print(f"Adding {len(all_splits)} new chunks to existing store ({existing_chunks_count} existing)...")
             # Load existing
-            existing_vectorstore = Chroma(
+            existing_vectorstore = FAISS(
                 persist_directory=self.persist_directory,
                 embedding_function=self.embeddings
             )
@@ -206,7 +207,7 @@ class RAGService:
             print("⏳ This may take 5-10 minutes for embedding generation...")
             
             # Create vector store with all chunks
-            self.vectorstore = Chroma.from_documents(
+            self.vectorstore = FAISS.from_documents(
                 documents=all_splits,
                 embedding=self.embeddings,
                 persist_directory=self.persist_directory
@@ -243,7 +244,7 @@ class RAGService:
         # Check if vector store already exists
         if vectorstore_path.exists() and any(vectorstore_path.iterdir()):
             print(f"Loading existing vector store from {self.persist_directory}")
-            self.vectorstore = Chroma(
+            self.vectorstore = FAISS(
                 persist_directory=self.persist_directory,
                 embedding_function=self.embeddings
             )
