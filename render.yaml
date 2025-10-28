@@ -1,9 +1,17 @@
 services:
   - type: web
     name: medical-chatbot
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
+    env: python
+    pythonVersion: 3.10.14
+    buildCommand: pip install --upgrade pip setuptools wheel && pip install -r requirements.txt
+    startCommand: python app.py
     envVars:
       - key: PORT
         generateValue: true
+      - key: RUSTUP_HOME
+        value: /tmp/rustup
+      - key: CARGO_HOME
+        value: /tmp/cargo
+      - key: PATH
+        value: /tmp/cargo/bin:$PATH
 
