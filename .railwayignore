@@ -1,0 +1,16 @@
+.git
+.gitignore
+README.md
+*.md
+test_api.py
+check_status.sh
+build.sh
+push_to_github.sh
+.next
+DEPLOY*
+TRUTH.md
+VERIFICATION*
+render.yaml
+Procfile
+runtime.txt
+
