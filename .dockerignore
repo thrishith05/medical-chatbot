@@ -1,0 +1,28 @@
+# Git files
+.git
+.gitignore
+README.md
+
+# Documentation
+*.md
+DEPLOY_BEST_OPTIONS.md
+TRUTH.md
+VERIFICATION_REPORT.md
+
+# Scripts
+*.sh
+push_to_github.sh
+
+# Build files
+.next
+build.sh
+
+# Config files we don't need in Docker
+render.yaml
+railway.json
+
+# Testing
+test_api.py
+quick_start.py
+init_vector_db.py
+
