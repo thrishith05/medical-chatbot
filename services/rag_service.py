@@ -337,16 +337,27 @@ class RAGService:
                         if len(". ".join(answer_parts)) > 150:
                             break
                 
-                # Build the answer
+                # Build the answer from collected parts
                 if answer_parts:
                     answer = ". ".join(answer_parts) + "."
                 else:
-                    # Fallback: use first document content
+                    # Fallback: use first document content with better extraction
                     top_doc = docs[0][0].page_content
                     sentences = [s.strip() for s in top_doc.split(".") if s.strip()]
                     if sentences:
-                        filtered = [s for s in sentences if len(s) > 25 and not s.isupper()][:3]
-                        answer = ". ".join(filtered) + "." if filtered else top_doc[:400] + "..."
+                        # Take longer, more substantial sentences (avoid headers/short fragments)
+                        filtered = [s for s in sentences if len(s) > 40 and not s.isupper() and not s.startswith(('Fig', 'Box', 'Table'))]
+                        if filtered:
+                            # Take up to 5 sentences or until we have good length
+                            selected = []
+                            for sentence in filtered[:5]:
+                                selected.append(sentence)
+                                if len(". ".join(selected)) > 200:
+                                    break
+                            answer = ". ".join(selected) + "." if selected else top_doc[:400] + "..."
+                        else:
+                            # If no good sentences, just take first substantial content
+                            answer = top_doc[:400] + "..." if len(top_doc) > 400 else top_doc
                     else:
                         answer = "Based on the medical literature, this information is relevant."
                 
@@ -355,27 +366,40 @@ class RAGService:
                     # Truncate intelligently at sentence boundary
                     truncated = answer[:500]
                     last_period = truncated.rfind(".")
-                    if last_period > 300:
+                    if last_period > 250:
                         answer = truncated[:last_period + 1]
                     else:
                         answer = truncated[:497] + "..."
-                elif len(answer) < 100:
-                    # If too short, try to add context from other docs with better filtering
-                    for doc, _ in docs[1:3]:
-                        if len(answer) > 150:
+                elif len(answer) < 150:
+                    # If too short, add more context from other docs
+                    remaining_docs = docs[1:min(3, len(docs))]
+                    for doc, score_val in remaining_docs:
+                        if len(answer) >= 200:
                             break
+                        
                         sentences = [s.strip() for s in doc.page_content.split(".") if s.strip()]
-                        # Filter out headers
+                        # Better filtering for sentences
                         for sentence in sentences:
-                            is_header = (sentence.isupper() or len(sentence) < 40 or
-                                       any(char.isdigit() for char in sentence[:5]))
-                            if not is_header and len(sentence) > 40:
-                                extra = sentence + "."
-                                answer = answer + " " + extra
-                                if len(answer) > 150:
-                                    break
-                            if len(answer) > 150:
-                                break
+                            # Skip headers, figures, tables, very short sentences
+                            is_bad = (sentence.isupper() or len(sentence) < 50 or
+                                     sentence.startswith(('Fig', 'Box', 'Table', '   ')) or
+                                     any(char.isdigit() for char in sentence[:8]))
+                            
+                            if not is_bad and len(sentence) > 50:
+                                # Check for query word matches to prioritize relevance
+                                sentence_lower = sentence.lower()
+                                relevance = sum(1 for word in query_words if word in sentence_lower)
+                                if relevance > 0 or len(answer) < 100:
+                                    answer = answer + " " + sentence + "."
+                                    if len(answer) >= 200:
+                                        break
+                        
+                        if len(answer) >= 200:
+                            break
+                    
+                    # Final check - if still too short, add informative sentence
+                    if len(answer) < 100:
+                        answer = "Based on the medical literature: " + answer
             else:
                 answer = "No relevant information found in the medical literature."
             
