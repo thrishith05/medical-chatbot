@@ -1,9 +1,11 @@
 services:
   - type: web
     name: medical-chatbot
-    env: python
-    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
-    startCommand: python app.py
+    env: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    buildCommand: docker build -t medical-chatbot .
+    startCommand: docker run -p $PORT:$PORT -e PORT=$PORT medical-chatbot
     envVars:
       - key: PORT
         generateValue: true
