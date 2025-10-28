@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
 
@@ -13,6 +14,15 @@ from services.rag_service import RAGService
 
 # Initialize FastAPI app
 app = FastAPI(title="Medical Chatbot API", version="1.0.0")
+
+# Add CORS middleware to allow requests from Hack-A-Cure evaluator
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Initialize RAG Service (lazy loading)
 rag_service = None
