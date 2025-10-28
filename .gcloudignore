@@ -1,0 +1,33 @@
+# Git
+.git/
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+
+# Docs
+*.md
+DEPLOY*
+TRUTH.md
+VERIFICATION*
+README_DEPLOYMENT.md
+
+# Scripts
+*.sh
+
+# Build files
+.next/
+build.sh
+push_to_github.sh
+
+# Configs
+railway.json
+nixpacks.toml
+fly.toml
+
