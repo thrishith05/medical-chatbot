@@ -32,7 +32,7 @@ def get_rag_service():
 # Request/Response Models
 class QueryRequest(BaseModel):
     query: str
-    top_k: Optional[int] = 5
+    top_k: int
 
 class QueryResponse(BaseModel):
     answer: str
