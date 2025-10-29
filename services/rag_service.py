@@ -246,17 +246,32 @@ class RAGService:
         """Initialize or load the vector store"""
         vectorstore_path = Path(self.persist_directory)
         
+        # Check if Dataset directory exists
+        if not self.data_path.exists():
+            print(f"⚠️ Dataset path {self.data_path} not found. API will start without ChromaDB.")
+            print("Set DATASET_PATH environment variable or place Dataset in the project directory.")
+            self.vectorstore = None
+            return
+        
         # Check if vector store already exists
         if vectorstore_path.exists() and any(vectorstore_path.iterdir()):
-            print(f"Loading existing vector store from {self.persist_directory}")
-            self.vectorstore = Chroma(
-                persist_directory=self.persist_directory,
-                embedding_function=self.embeddings
-            )
-            print("Vector store loaded successfully")
+            try:
+                print(f"Loading existing vector store from {self.persist_directory}")
+                self.vectorstore = Chroma(
+                    persist_directory=self.persist_directory,
+                    embedding_function=self.embeddings
+                )
+                print("Vector store loaded successfully")
+            except Exception as e:
+                print(f"Error loading vector store: {e}")
+                self.vectorstore = None
         else:
             print("Creating new vector store...")
-            self._create_vectorstore_with_incremental_loading()
+            try:
+                self._create_vectorstore_with_incremental_loading()
+            except Exception as e:
+                print(f"Error creating vector store: {e}")
+                self.vectorstore = None
         
         # Note: We don't use QA chain anymore - we extract answers directly from contexts
         # This allows us to provide precise answers without OpenAI
