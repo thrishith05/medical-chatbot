@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical Chatbot - Hack A Cure</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="currentColor"/>
+                    <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <h1>Medical Chatbot</h1>
+            </div>
+            <p class="subtitle">RAG-Powered Medical Question Answering System</p>
+        </header>
+
+        <div class="chat-container">
+            <div class="chat-header">
+                <div class="status-indicator" id="statusIndicator">
+                    <span class="status-dot"></span>
+                    <span>Ready</span>
+                </div>
+            </div>
+
+            <div class="chat-messages" id="chatMessages">
+                <div class="welcome-message">
+                    <div class="welcome-icon">🏥</div>
+                    <h2>Welcome to Medical Chatbot</h2>
+                    <p>Ask me anything about medical topics including:</p>
+                    <ul>
+                        <li>Anatomy & Physiology</li>
+                        <li>Cardiology</li>
+                        <li>Dentistry</li>
+                        <li>Emergency Medicine</li>
+                        <li>Infectious Diseases</li>
+                        <li>Internal Medicine</li>
+                        <li>And more...</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <textarea 
+                        id="queryInput" 
+                        placeholder="Ask a medical question... (e.g., What are the symptoms of a heart attack?)"
+                        rows="3"
+                    ></textarea>
+                    <div class="input-footer">
+                        <div class="top-k-selector">
+                            <label for="topK">Sources:</label>
+                            <select id="topK">
+                                <option value="3">3</option>
+                                <option value="5" selected>5</option>
+                                <option value="10">10</option>
+                            </select>
+                        </div>
+                        <button id="sendButton" onclick="sendQuery()">
+                            <span class="button-text">Send</span>
+                            <svg class="button-icon" width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="api-config">
+            <div class="config-header">
+                <span>⚙️ API Configuration</span>
+            </div>
+            <input type="text" id="apiUrl" placeholder="API URL (e.g., http://localhost:8001 or https://your-tunnel.com)" value="http://localhost:8001">
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
+

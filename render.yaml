@@ -1,12 +1,15 @@
 services:
   - type: web
-    name: medical-chatbot
-    env: docker
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
-    buildCommand: docker build -t medical-chatbot .
-    startCommand: docker run -p $PORT:$PORT -e PORT=$PORT medical-chatbot
+    name: medical-chatbot-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt && python init_vector_db.py
+    startCommand: python app.py
     envVars:
       - key: PORT
-        generateValue: true
+        value: 10000
+      - key: PYTHON_VERSION
+        value: 3.9.18
+      - key: DATASET_PATH
+        value: /Users/thrishithreddy/Desktop/Dataset
 

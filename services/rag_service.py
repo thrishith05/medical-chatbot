@@ -257,14 +257,8 @@ class RAGService:
     
     def get_answer(self, query: str, top_k: int = 5) -> Dict[str, List[str]]:
         """
-        Get answer and relevant contexts for a query
-        
-        Args:
-            query: User question
-            top_k: Number of relevant contexts to return
-            
-        Returns:
-            Dictionary with 'answer' and 'contexts' keys
+        Get a SINGLE, PRECISE answer from ChromaDB
+        Returns answer from ONLY the best matching document - ONE reliable source
         """
         # If vector store doesn't exist yet, return a helpful message
         if self.vectorstore is None:
@@ -274,174 +268,91 @@ class RAGService:
             }
         
         try:
-            # Get relevant documents directly from vector store
-            docs = self.vectorstore.similarity_search_with_score(query, k=top_k)
+            # Get ONLY the single best matching document (k=1 for one source)
+            docs = self.vectorstore.similarity_search_with_score(query, k=1)
             
-            # Extract the most relevant information as the answer
-            if docs:
-                # Try to build answer from multiple documents for better context
-                answer_parts = []
-                query_lower = query.lower()
-                query_words = [w for w in query_lower.split() if len(w) > 3]
-                
-                # Process up to 3 top documents
-                for doc_idx, (doc, score) in enumerate(docs[:3]):
-                    page_content = doc.page_content
-                    
-                    # Extract sentences
-                    sentences = [s.strip() for s in page_content.split(".") if s.strip()]
-                    
-                    # Score sentences by relevance
-                    scored_sentences = []
-                    for sentence in sentences:
-                        sentence_lower = sentence.lower()
-                        # Require substantial sentences (not headers or very short)
-                        # Exclude headers, page numbers, and very short sentences
-                        is_header = (sentence.isupper() or 
-                                   any(char.isdigit() for char in sentence[:5]) or
-                                   len(sentence) < 30 or
-                                   all(c in sentence[:20] for c in "  ") or  # Multiple spaces = likely header
-                                   sentence.startswith(('   ', 'Fig', 'Box')))
-                        
-                        if not is_header and len(sentence) > 25:
-                            # Count matching keywords
-                            score_count = sum(1 for word in query_words if word in sentence_lower)
-                            if score_count > 0:
-                                scored_sentences.append((score_count, sentence))
-                    
-                    # Add top sentences from this document
-                    scored_sentences.sort(reverse=True)
-                    for score_val, sentence in scored_sentences[:3]:
-                        if len(". ".join(answer_parts)) > 300:
-                            break
-                        answer_parts.append(sentence)
-                    
-                    # If we have enough content, stop
-                    if len(". ".join(answer_parts)) > 300:
-                        break
-                
-                # If still not enough content, take sentences without scoring
-                if len(". ".join(answer_parts)) < 100:
-                    for doc, score_val in docs[:2]:
-                        sentences = [s.strip() for s in doc.page_content.split(".") if s.strip()]
-                        # Take substantial sentences (avoid headers)
-                        for sentence in sentences:
-                            is_header = (sentence.isupper() or len(sentence) < 30 or
-                                       any(char.isdigit() for char in sentence[:5]))
-                            if not is_header and len(sentence) > 30:
-                                answer_parts.append(sentence)
-                                if len(". ".join(answer_parts)) > 150:
-                                    break
-                            if len(". ".join(answer_parts)) > 150:
-                                break
-                        if len(". ".join(answer_parts)) > 150:
-                            break
-                
-                # Build the answer from collected parts
-                if answer_parts:
-                    answer = ". ".join(answer_parts) + "."
-                else:
-                    # Fallback: use first document content with better extraction
-                    top_doc = docs[0][0].page_content
-                    sentences = [s.strip() for s in top_doc.split(".") if s.strip()]
-                    if sentences:
-                        # Take longer, more substantial sentences (avoid headers/short fragments)
-                        filtered = [s for s in sentences if len(s) > 40 and not s.isupper() and not s.startswith(('Fig', 'Box', 'Table'))]
-                        if filtered:
-                            # Take up to 5 sentences or until we have good length
-                            selected = []
-                            for sentence in filtered[:5]:
-                                selected.append(sentence)
-                                if len(". ".join(selected)) > 200:
-                                    break
-                            answer = ". ".join(selected) + "." if selected else top_doc[:400] + "..."
-                        else:
-                            # If no good sentences, just take first substantial content
-                            answer = top_doc[:400] + "..." if len(top_doc) > 400 else top_doc
-                    else:
-                        answer = "Based on the medical literature, this information is relevant."
-                
-                # Ensure answer is between 150-500 chars for best quality
-                if len(answer) > 500:
-                    # Truncate intelligently at sentence boundary
-                    truncated = answer[:500]
-                    last_period = truncated.rfind(".")
-                    if last_period > 250:
-                        answer = truncated[:last_period + 1]
-                    else:
-                        answer = truncated[:497] + "..."
-                elif len(answer) < 150:
-                    # If too short, add more context from other docs
-                    remaining_docs = docs[1:min(3, len(docs))]
-                    for doc, score_val in remaining_docs:
-                        if len(answer) >= 200:
-                            break
-                        
-                        sentences = [s.strip() for s in doc.page_content.split(".") if s.strip()]
-                        # Better filtering for sentences
-                        for sentence in sentences:
-                            # Skip headers, figures, tables, very short sentences
-                            is_bad = (sentence.isupper() or len(sentence) < 50 or
-                                     sentence.startswith(('Fig', 'Box', 'Table', '   ')) or
-                                     any(char.isdigit() for char in sentence[:8]))
-                            
-                            if not is_bad and len(sentence) > 50:
-                                # Check for query word matches to prioritize relevance
-                                sentence_lower = sentence.lower()
-                                relevance = sum(1 for word in query_words if word in sentence_lower)
-                                if relevance > 0 or len(answer) < 100:
-                                    answer = answer + " " + sentence + "."
-                                    if len(answer) >= 200:
-                                        break
-                        
-                        if len(answer) >= 200:
-                            break
-                    
-                    # Final check - if still too short, add informative sentence
-                    if len(answer) < 100:
-                        answer = "Based on the medical literature: " + answer
-            else:
-                answer = "No relevant information found in the medical literature."
+            if not docs:
+                return {
+                    "answer": "No relevant information found in the medical literature.",
+                    "contexts": []
+                }
             
-            # Prepare source documents for contexts
-            source_docs = [doc[0] for doc in docs] if docs else []
+            # Get the SINGLE best matching document (lowest score = best match)
+            best_doc, best_score = docs[0]
             
-            # Prepare contexts (limit to top_k)
-            contexts = []
-            seen_sources = set()
+            # Extract the most precise answer from the best document
+            page_content = best_doc.page_content
             
-            for doc in source_docs[:top_k]:
-                page_content = doc.page_content
-                source = doc.metadata.get('source', 'unknown')
-                page = doc.metadata.get('page', '')
+            # Find the most relevant sentences within the document
+            sentences = [s.strip() for s in page_content.split(".") if s.strip()]
+            
+            query_lower = query.lower()
+            query_words = [w for w in query_lower.split() if len(w) > 3]
+            
+            # Score each sentence for relevance
+            scored_sentences = []
+            for sentence in sentences:
+                # Skip headers, figures, short fragments
+                is_header = (
+                    sentence.isupper() or
+                    len(sentence) < 50 or
+                    sentence.startswith(('Fig', 'Box', 'Table', 'Chapter', '   ')) or
+                    sentence.count('  ') > 2
+                )
                 
-                # Truncate long contexts
-                if len(page_content) > 500:
-                    page_content = page_content[:497] + "..."
-                
-                context_entry = f"[{source}"
-                if page:
-                    context_entry += f" p.{page}"
-                context_entry += "] " + page_content
-                
-                # Avoid duplicates
-                context_key = (source, page)
-                if context_key not in seen_sources:
-                    contexts.append(page_content)
-                    seen_sources.add(context_key)
-                
-                if len(contexts) >= top_k:
+                if not is_header:
+                    sentence_lower = sentence.lower()
+                    # Count query word matches
+                    matches = sum(1 for word in query_words if word in sentence_lower)
+                    
+                    # Prioritize longer, more complete sentences
+                    score = matches * 10 + min(len(sentence), 100)
+                    
+                    scored_sentences.append((score, sentence))
+            
+            # Sort by relevance score
+            scored_sentences.sort(reverse=True)
+            
+            # Select the top 2-3 most relevant sentences for a complete answer
+            selected_sentences = []
+            for score, sentence in scored_sentences[:3]:
+                selected_sentences.append(sentence)
+                # Stop when we have a good amount of content
+                if len(". ".join(selected_sentences)) > 250:
                     break
             
+            # If we don't have enough, take sentences in order (avoiding headers)
+            if len(selected_sentences) < 2:
+                for sentence in sentences:
+                    is_header = (sentence.isupper() or len(sentence) < 50 or 
+                                sentence.startswith(('Fig', 'Box', 'Table')))
+                    if not is_header:
+                        selected_sentences.append(sentence)
+                        if len(". ".join(selected_sentences)) > 300:
+                            break
+            
+            # Build the answer
+            answer = ". ".join(selected_sentences) + "."
+            
+            # Trim to optimal length (200-400 characters)
+            if len(answer) > 500:
+                # Truncate at sentence boundary
+                truncated = answer[:500]
+                last_period = truncated.rfind(".")
+                answer = truncated[:last_period + 1] if last_period > 200 else truncated + "..."
+            elif len(answer) < 100:
+                # If too short, use the full document excerpt
+                answer = page_content[:300] + "..." if len(page_content) > 300 else page_content
+            
+            # Return empty contexts - user doesn't want to see sources
             return {
                 "answer": answer,
-                "contexts": contexts
+                "contexts": []  # No sources displayed
             }
         
         except Exception as e:
             print(f"Error processing query: {e}")
             return {
-                "answer": f"I encountered an error processing your question. Please try rephrasing it.",
+                "answer": "I encountered an error processing your question. Please try rephrasing it.",
                 "contexts": []
             }
-
