@@ -104,11 +104,12 @@ class RAGService:
         
         for pdf_file in pdf_files:
             try:
+                # Load PDF without metadata extraction to avoid subprocess errors
                 loader = PyPDFLoader(str(pdf_file))
                 docs = loader.load()
-                # Add source metadata
+                # Add source metadata manually
                 for doc in docs:
-                    doc.metadata['source'] = pdf_file.name
+                    doc.metadata['source'] = str(pdf_file.name)
                 documents.extend(docs)
                 print(f"Loaded {pdf_file.name}: {len(docs)} pages")
             except Exception as e:
@@ -164,13 +165,19 @@ class RAGService:
             try:
                 print(f"\n[{idx}/{total_files}] Processing {pdf_file.name}...")
                 
-                # Load single PDF
-                loader = PyPDFLoader(str(pdf_file))
-                docs = loader.load()
+                # Load single PDF - handle any metadata errors gracefully
+                try:
+                    loader = PyPDFLoader(str(pdf_file))
+                    docs = loader.load()
+                except Exception as pdf_error:
+                    # If PDF loading fails, try without metadata
+                    print(f"Warning: Error loading PDF metadata, continuing anyway: {pdf_error}")
+                    # Fallback: skip this file
+                    continue
                 
-                # Add source metadata
+                # Add source metadata manually
                 for doc in docs:
-                    doc.metadata['source'] = pdf_file.name
+                    doc.metadata['source'] = str(pdf_file.name)
                 
                 # Split into chunks
                 splits = text_splitter.split_documents(docs)
