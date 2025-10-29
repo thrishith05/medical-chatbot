@@ -2,9 +2,6 @@ services:
   - type: web
     name: medical-chatbot-api
     env: python
+    plan: free
     buildCommand: pip install --no-cache-dir -r requirements.txt
     startCommand: python app.py
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
-
