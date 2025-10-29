@@ -1,7 +1,13 @@
 services:
   - type: web
     name: medical-chatbot-api
-    env: python
+    runtime: python
     plan: free
-    buildCommand: pip install --no-cache-dir -r requirements.txt
+    buildCommand: pip install -r requirements.txt
     startCommand: python app.py
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.9.18
+      - key: NIXPACKS_NIXPKGS
+        value: nixpkgs-23.11
